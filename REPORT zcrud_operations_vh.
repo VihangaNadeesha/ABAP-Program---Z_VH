@@ -1,0 +1,183 @@
+*&---------------------------------------------------------------------*
+*& Report ZCRUD_OPERATIONS_VH
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zcrud_operations_vh.
+
+* Selection screen parameters
+PARAMETERS: p_empid  TYPE zemployees_vh-emp_id,
+            p_name   TYPE zemployees_vh-name,
+            p_salary TYPE zemployees_vh-salary.
+
+SELECTION-SCREEN BEGIN OF BLOCK rad WITH FRAME TITLE TEXT-001.
+PARAMETERS: rb_crt RADIOBUTTON GROUP rb1 DEFAULT 'X',
+            rb_rd  RADIOBUTTON GROUP rb1,
+            rb_upd RADIOBUTTON GROUP rb1,
+            rb_del RADIOBUTTON GROUP rb1.
+SELECTION-SCREEN END OF BLOCK rad.
+
+* Internal table and work area for operations
+DATA: it_employees TYPE TABLE OF zemployees_vh,
+      wa_employee  TYPE zemployees_vh.
+
+DATA: fieldcatalog  TYPE slis_t_fieldcat_alv WITH HEADER LINE,
+      gd_tab_group  TYPE slis_t_sp_group_alv,
+      gd_layout     TYPE slis_layout_alv,
+      gd_repid      LIKE sy-repid,
+      gt_events     TYPE slis_t_event,
+      gd_prntparams TYPE slis_print_alv.
+
+TYPE-POOLS:slis.
+
+* Field catalog for ALV
+DATA: gt_fieldcat TYPE lvc_t_fcat,
+      gs_fieldcat TYPE lvc_s_fcat.
+
+* ALV grid display variables
+*DATA: gr_alv_grid TYPE REF TO cl_gui_alv_grid,
+*      gs_layout TYPE lvc_s_layo.
+
+START-OF-SELECTION.
+
+  IF rb_crt = 'X'.
+    PERFORM create_employee.
+  ELSEIF rb_rd = 'X'.
+    PERFORM read_employee.
+  ELSEIF rb_upd = 'X'.
+    PERFORM update_employee.
+  ELSEIF rb_del = 'X'.
+    PERFORM delete_employee.
+  ELSE.
+    MESSAGE 'Please select a valid operation.' TYPE 'I'.
+  ENDIF.
+
+FORM create_employee.
+  wa_employee-emp_id = p_empid.
+  wa_employee-name = p_name.
+  wa_employee-salary = p_salary.
+  INSERT INTO ztb_employees_vh VALUES wa_employee.
+  IF sy-subrc = 0.
+    MESSAGE 'Employee created successfully.' TYPE 'S'.
+  ELSE.
+    MESSAGE 'Error creating employee.' TYPE 'E'.
+  ENDIF.
+ENDFORM.
+
+FORM read_employee.
+  SELECT * FROM ztb_employees_vh INTO TABLE it_employees.
+  IF sy-subrc = 0.
+    PERFORM display_alv.
+  ELSE.
+    MESSAGE 'No employees found.' TYPE 'I'.
+  ENDIF.
+ENDFORM.
+
+FORM update_employee.
+  SELECT SINGLE * FROM ztb_employees_vh INTO wa_employee WHERE emp_id = p_empid.
+  IF sy-subrc = 0.
+    wa_employee-name = p_name.
+    wa_employee-salary = p_salary.
+    MODIFY ztb_employees_vh FROM wa_employee.
+    IF sy-subrc = 0.
+      MESSAGE 'Employee updated successfully.' TYPE 'S'.
+    ELSE.
+      MESSAGE 'Error updating employee.' TYPE 'E'.
+    ENDIF.
+  ELSE.
+    MESSAGE 'Employee not found.' TYPE 'I'.
+  ENDIF.
+ENDFORM.
+
+FORM delete_employee.
+  DELETE FROM ztb_employees_vh WHERE emp_id = p_empid.
+  IF sy-subrc = 0.
+    MESSAGE 'Employee deleted successfully.' TYPE 'S'.
+  ELSE.
+    MESSAGE 'Error deleting employee or employee not found.' TYPE 'E'.
+  ENDIF.
+ENDFORM.
+
+FORM display_alv.
+  gd_repid = sy-repid.
+  CLEAR: gt_fieldcat, gs_fieldcat.
+
+  gs_fieldcat-fieldname = 'EMP_ID'.
+  gs_fieldcat-coltext = 'Employee ID'.
+  APPEND gs_fieldcat TO gt_fieldcat.
+
+  gs_fieldcat-fieldname = 'NAME'.
+  gs_fieldcat-coltext = 'Name'.
+  APPEND gs_fieldcat TO gt_fieldcat.
+
+  gs_fieldcat-fieldname = 'SALARY'.
+  gs_fieldcat-coltext = 'Salary'.
+  APPEND gs_fieldcat TO gt_fieldcat.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+*     I_INTERFACE_CHECK  = ' '
+*     I_BYPASSING_BUFFER = ' '
+*     I_BUFFER_ACTIVE    = ' '
+      i_callback_program = gd_repid
+*     I_CALLBACK_PF_STATUS_SET          = ' '
+*     I_CALLBACK_USER_COMMAND           = ' '
+*     I_CALLBACK_TOP_OF_PAGE            = ' '
+*     I_CALLBACK_HTML_TOP_OF_PAGE       = ' '
+*     I_CALLBACK_HTML_END_OF_LIST       = ' '
+*     I_STRUCTURE_NAME   =
+*     I_BACKGROUND_ID    = ' '
+*     I_GRID_TITLE       =
+*     I_GRID_SETTINGS    =
+      is_layout          = gd_layout
+      it_fieldcat        = gt_fieldcat
+*     IT_EXCLUDING       =
+*     IT_SPECIAL_GROUPS  =
+*     IT_SORT            =
+*     IT_FILTER          =
+*     IS_SEL_HIDE        =
+*     I_DEFAULT          = 'X'
+      i_save             = 'X'
+*     IS_VARIANT         =
+*     IT_EVENTS          =
+*     IT_EVENT_EXIT      =
+*     IS_PRINT           =
+*     IS_REPREP_ID       =
+*     I_SCREEN_START_COLUMN             = 0
+*     I_SCREEN_START_LINE               = 0
+*     I_SCREEN_END_COLUMN               = 0
+*     I_SCREEN_END_LINE  = 0
+*     I_HTML_HEIGHT_TOP  = 0
+*     I_HTML_HEIGHT_END  = 0
+*     IT_ALV_GRAPHICS    =
+*     IT_HYPERLINK       =
+*     IT_ADD_FIELDCAT    =
+*     IT_EXCEPT_QINFO    =
+*     IR_SALV_FULLSCREEN_ADAPTER        =
+* IMPORTING
+*     E_EXIT_CAUSED_BY_CALLER           =
+*     ES_EXIT_CAUSED_BY_USER            =
+    TABLES
+      t_outtab           = it_employees
+    EXCEPTIONS
+      program_error      = 1
+      OTHERS             = 2.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+
+  " Display ALV grid
+*  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+*    EXPORTING
+*      it_fieldcat = gt_fieldcat
+*    TABLES
+*      t_outtab    = it_employees
+*    EXCEPTIONS
+*      program_error = 1
+*      OTHERS        = 2.
+
+*  IF sy-subrc <> 0.
+*    MESSAGE 'Error displaying ALV report.' TYPE 'E'.
+*  ENDIF.
+ENDFORM.
